@@ -2,6 +2,7 @@ const CDP = require('chrome-remote-interface');
 const fs = require('fs');
 const cp = require('child_process');
 const net = require('net');
+const validUrl = require('valid-url');
 const commandExists = require('command-exists');
 
 class StreamReader {
@@ -110,42 +111,46 @@ class RenderPDF {
 
     async renderPdf(url, options) {
         return new Promise((resolve, reject) => {
+            const isHTML = !validUrl.isUri(url);
             CDP({host: this.host, port: this.port}, async (client) => {
                 try{
-                this.log(`Opening ${url}`);
-                const {Page, Emulation, LayerTree} = client;
-                await Page.enable();
-                await LayerTree.enable();
+                    this.log(`Opening ${url}`);
+                    const {Page, Emulation, LayerTree} = client;
+                    await Page.enable();
+                    await LayerTree.enable();
 
-                const loaded = this.cbToPromise(Page.loadEventFired);
-                const jsDone = this.cbToPromise(Emulation.virtualTimeBudgetExpired);
+                    const loaded = this.cbToPromise(Page.loadEventFired);
+                    const jsDone = this.cbToPromise(Emulation.virtualTimeBudgetExpired);
 
-                await Page.navigate({url});
-                await Emulation.setVirtualTimePolicy({policy: 'pauseIfNetworkFetchesPending', budget: 5000});
+                    const pData = await Page.navigate(isHTML ? 'about:blank' : url);
+                    if (isHTML) {
+                        await Page.setDocumentContent(pData.frameId, url);
+                    }
+                    await Emulation.setVirtualTimePolicy({policy: 'pauseIfNetworkFetchesPending', budget: 5000});
 
-                await this.profileScope('Wait for load', async () => {
-                    await loaded;
-                });
+                    await this.profileScope('Wait for load', async () => {
+                        await loaded;
+                    });
 
-                await this.profileScope('Wait for js execution', async () => {
-                    await jsDone;
-                });
+                    await this.profileScope('Wait for js execution', async () => {
+                        await jsDone;
+                    });
 
-                await this.profileScope('Wait for animations', async () => {
-                    await new Promise((resolve) => {
-                        setTimeout(resolve, 5000); // max waiting time
-                        let timeout = setTimeout(resolve, 100);
-                        LayerTree.layerPainted(() => {
-                            clearTimeout(timeout);
-                            timeout = setTimeout(resolve, 100);
+                    await this.profileScope('Wait for animations', async () => {
+                        await new Promise((resolve) => {
+                            setTimeout(resolve, 5000); // max waiting time
+                            let timeout = setTimeout(resolve, 100);
+                            LayerTree.layerPainted(() => {
+                                clearTimeout(timeout);
+                                timeout = setTimeout(resolve, 100);
+                            });
                         });
                     });
-                });
 
-                const pdf = await Page.printToPDF(options);
-                const buff = Buffer.from(pdf.data, 'base64');
-                client.close();
-                resolve(buff);
+                    const pdf = await Page.printToPDF(options);
+                    const buff = Buffer.from(pdf.data, 'base64');
+                    client.close();
+                    resolve(buff);
                 }catch (e) {
                     reject(e.message)
                 }
