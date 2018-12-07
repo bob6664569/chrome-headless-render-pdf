@@ -98,9 +98,9 @@ class RenderPDF {
                     const loaded = this.cbToPromise(Page.loadEventFired);
                     const jsDone = this.cbToPromise(Emulation.virtualTimeBudgetExpired);
 
-                    const pData = await Page.navigate(isHTML ? 'about:blank' : url);
+                    const pData = await Page.navigate({ url: isHTML ? 'about:blank' : url });
                     if (isHTML) {
-                        await Page.setDocumentContent(pData.frameId, url);
+                        await Page.setDocumentContent({ frameId: pData.frameId, html: url });
                     }
                     await Emulation.setVirtualTimePolicy({policy: 'pauseIfNetworkFetchesPending', budget: 5000});
 
