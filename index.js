@@ -5,6 +5,15 @@ const net = require('net');
 const validUrl = require('valid-url');
 const commandExists = require('command-exists');
 
+class StreamReader {
+    constructor(stream) {
+        this.data = '';
+        stream.on('data', (chunk) => {
+            this.data += chunk.toString();
+        });
+    }
+}
+
 class RenderPDF {
     constructor(options) {
         this.setOptions(options || {});
@@ -15,8 +24,23 @@ class RenderPDF {
           this.port = this.options.remotePort;
         } else {
           this.host = 'localhost';
-          this.port = Math.floor(Math.random() * 10000 + 1000);
         }
+    }
+
+    selectFreePort() {
+        return new Promise((resolve) => {
+            let port = Math.floor(Math.random() * 30000) + 30000;
+            const server = net.createServer({allowHalfOpen: true});
+            server.on('listening', () => {
+                server.close(() => {
+                    resolve(port);
+                });
+            });
+            server.on('error', () => {
+                server.listen(Math.floor(Math.random() * 30000) + 30000);
+            });
+            server.listen(port);
+        })
     }
 
     setOptions(options) {
@@ -218,6 +242,9 @@ class RenderPDF {
     }
 
     async spawnChrome() {
+        if(!this.port) {
+            this.port = await this.selectFreePort();
+        }
         const chromeExec = this.options.chromeBinary || await this.detectChrome();
         this.log('Using', chromeExec);
         const commandLineOptions = [
@@ -235,10 +262,13 @@ class RenderPDF {
             chromeExec,
             commandLineOptions
         );
+        const stdout = new StreamReader(this.chrome.stdout);
+        const stderr = new StreamReader(this.chrome.stderr);
         this.chrome.on('close', (code) => {
             this.log(`Chrome stopped (${code})`);
-            this.browserLog('out', this.chrome.stdout.toString());
-            this.browserLog('err', this.chrome.stderr.toString());
+
+            this.browserLog('out', stdout.data);
+            this.browserLog('err', stderr.data);
         });
     }
 
@@ -353,7 +383,7 @@ class RenderPDF {
             });
             connection.on('error', () => {
                 reject();
-            })
+            });
         });
     }
 
