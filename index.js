@@ -24,6 +24,7 @@ class RenderPDF {
           this.port = this.options.remotePort;
         } else {
           this.host = 'localhost';
+          this.port = Math.floor(Math.random() * 10000 + 1000);
         }
     }
 
@@ -266,6 +267,7 @@ class RenderPDF {
         const stderr = new StreamReader(this.chrome.stderr);
         this.chrome.on('close', (code) => {
             this.log(`Chrome stopped (${code})`);
+
             this.browserLog('out', stdout.data);
             this.browserLog('err', stderr.data);
         });
@@ -382,7 +384,7 @@ class RenderPDF {
             });
             connection.on('error', () => {
                 reject();
-            })
+            });
         });
     }
 
