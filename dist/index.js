@@ -12,21 +12,21 @@ var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
-var _promise = require('babel-runtime/core-js/promise');
-
-var _promise2 = _interopRequireDefault(_promise);
-
 var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
-var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
+var _promise = require('babel-runtime/core-js/promise');
 
-var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
+var _promise2 = _interopRequireDefault(_promise);
 
 var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
+
+var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
+
+var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -36,6 +36,17 @@ var cp = require('child_process');
 var net = require('net');
 var validUrl = require('valid-url');
 var commandExists = require('command-exists');
+
+var StreamReader = function StreamReader(stream) {
+    var _this = this;
+
+    (0, _classCallCheck3.default)(this, StreamReader);
+
+    this.data = '';
+    stream.on('data', function (chunk) {
+        _this.data += chunk.toString();
+    });
+};
 
 var RenderPDF = function () {
     function RenderPDF(options) {
@@ -54,6 +65,23 @@ var RenderPDF = function () {
     }
 
     (0, _createClass3.default)(RenderPDF, [{
+        key: 'selectFreePort',
+        value: function selectFreePort() {
+            return new _promise2.default(function (resolve) {
+                var port = Math.floor(Math.random() * 30000) + 30000;
+                var server = net.createServer({ allowHalfOpen: true });
+                server.on('listening', function () {
+                    server.close(function () {
+                        resolve(port);
+                    });
+                });
+                server.on('error', function () {
+                    server.listen(Math.floor(Math.random() * 30000) + 30000);
+                });
+                server.listen(port);
+            });
+        }
+    }, {
         key: 'setOptions',
         value: function setOptions(options) {
             this.options = {
@@ -84,7 +112,7 @@ var RenderPDF = function () {
         key: 'renderPdf',
         value: function () {
             var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5(url, options) {
-                var _this = this;
+                var _this2 = this;
 
                 return _regenerator2.default.wrap(function _callee5$(_context5) {
                     while (1) {
@@ -92,7 +120,7 @@ var RenderPDF = function () {
                             case 0:
                                 return _context5.abrupt('return', new _promise2.default(function (resolve, reject) {
                                     var isHTML = !validUrl.isUri(url);
-                                    CDP({ host: _this.host, port: _this.port }, function () {
+                                    CDP({ host: _this2.host, port: _this2.port }, function () {
                                         var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4(client) {
                                             var Page, Emulation, LayerTree, loaded, jsDone, pData, pdf, buff;
                                             return _regenerator2.default.wrap(function _callee4$(_context4) {
@@ -101,7 +129,7 @@ var RenderPDF = function () {
                                                         case 0:
                                                             _context4.prev = 0;
 
-                                                            _this.log('Opening ' + url);
+                                                            _this2.log('Opening ' + url);
                                                             Page = client.Page, Emulation = client.Emulation, LayerTree = client.LayerTree;
                                                             _context4.next = 5;
                                                             return Page.enable();
@@ -111,10 +139,10 @@ var RenderPDF = function () {
                                                             return LayerTree.enable();
 
                                                         case 7:
-                                                            loaded = _this.cbToPromise(Page.loadEventFired);
-                                                            jsDone = _this.cbToPromise(Emulation.virtualTimeBudgetExpired);
+                                                            loaded = _this2.cbToPromise(Page.loadEventFired);
+                                                            jsDone = _this2.cbToPromise(Emulation.virtualTimeBudgetExpired);
                                                             _context4.next = 11;
-                                                            return Page.navigate(isHTML ? 'about:blank' : url);
+                                                            return Page.navigate({ url: isHTML ? 'about:blank' : url });
 
                                                         case 11:
                                                             pData = _context4.sent;
@@ -125,7 +153,7 @@ var RenderPDF = function () {
                                                             }
 
                                                             _context4.next = 15;
-                                                            return Page.setDocumentContent(pData.frameId, url);
+                                                            return Page.setDocumentContent({ frameId: pData.frameId, html: url });
 
                                                         case 15:
                                                             _context4.next = 17;
@@ -133,7 +161,7 @@ var RenderPDF = function () {
 
                                                         case 17:
                                                             _context4.next = 19;
-                                                            return _this.profileScope('Wait for load', (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
+                                                            return _this2.profileScope('Wait for load', (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
                                                                 return _regenerator2.default.wrap(function _callee$(_context) {
                                                                     while (1) {
                                                                         switch (_context.prev = _context.next) {
@@ -146,12 +174,12 @@ var RenderPDF = function () {
                                                                                 return _context.stop();
                                                                         }
                                                                     }
-                                                                }, _callee, _this);
+                                                                }, _callee, _this2);
                                                             })));
 
                                                         case 19:
                                                             _context4.next = 21;
-                                                            return _this.profileScope('Wait for js execution', (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
+                                                            return _this2.profileScope('Wait for js execution', (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
                                                                 return _regenerator2.default.wrap(function _callee2$(_context2) {
                                                                     while (1) {
                                                                         switch (_context2.prev = _context2.next) {
@@ -164,12 +192,12 @@ var RenderPDF = function () {
                                                                                 return _context2.stop();
                                                                         }
                                                                     }
-                                                                }, _callee2, _this);
+                                                                }, _callee2, _this2);
                                                             })));
 
                                                         case 21:
                                                             _context4.next = 23;
-                                                            return _this.profileScope('Wait for animations', (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
+                                                            return _this2.profileScope('Wait for animations', (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
                                                                 return _regenerator2.default.wrap(function _callee3$(_context3) {
                                                                     while (1) {
                                                                         switch (_context3.prev = _context3.next) {
@@ -189,7 +217,7 @@ var RenderPDF = function () {
                                                                                 return _context3.stop();
                                                                         }
                                                                     }
-                                                                }, _callee3, _this);
+                                                                }, _callee3, _this2);
                                                             })));
 
                                                         case 23:
@@ -216,7 +244,7 @@ var RenderPDF = function () {
                                                             return _context4.stop();
                                                     }
                                                 }
-                                            }, _callee4, _this, [[0, 31]]);
+                                            }, _callee4, _this2, [[0, 31]]);
                                         }));
 
                                         return function (_x3) {
@@ -400,27 +428,39 @@ var RenderPDF = function () {
         key: 'spawnChrome',
         value: function () {
             var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8() {
-                var _this2 = this;
+                var _this3 = this;
 
-                var chromeExec, commandLineOptions;
+                var chromeExec, commandLineOptions, stdout, stderr;
                 return _regenerator2.default.wrap(function _callee8$(_context8) {
                     while (1) {
                         switch (_context8.prev = _context8.next) {
                             case 0:
-                                _context8.t0 = this.options.chromeBinary;
-
-                                if (_context8.t0) {
-                                    _context8.next = 5;
+                                if (this.port) {
+                                    _context8.next = 4;
                                     break;
                                 }
 
-                                _context8.next = 4;
-                                return this.detectChrome();
+                                _context8.next = 3;
+                                return this.selectFreePort();
+
+                            case 3:
+                                this.port = _context8.sent;
 
                             case 4:
+                                _context8.t0 = this.options.chromeBinary;
+
+                                if (_context8.t0) {
+                                    _context8.next = 9;
+                                    break;
+                                }
+
+                                _context8.next = 8;
+                                return this.detectChrome();
+
+                            case 8:
                                 _context8.t0 = _context8.sent;
 
-                            case 5:
+                            case 9:
                                 chromeExec = _context8.t0;
 
                                 this.log('Using', chromeExec);
@@ -431,13 +471,17 @@ var RenderPDF = function () {
                                     commandLineOptions.push('--window-size=' + this.commandLineOptions.windowSize[0] + ',' + this.commandLineOptions.windowSize[1]);
                                 }
                                 this.chrome = cp.spawn(chromeExec, commandLineOptions);
+                                stdout = new StreamReader(this.chrome.stdout);
+                                stderr = new StreamReader(this.chrome.stderr);
+
                                 this.chrome.on('close', function (code) {
-                                    _this2.log('Chrome stopped (' + code + ')');
-                                    _this2.browserLog('out', _this2.chrome.stdout.toString());
-                                    _this2.browserLog('err', _this2.chrome.stderr.toString());
+                                    _this3.log('Chrome stopped (' + code + ')');
+
+                                    _this3.browserLog('out', stdout.data);
+                                    _this3.browserLog('err', stderr.data);
                                 });
 
-                            case 11:
+                            case 17:
                             case 'end':
                                 return _context8.stop();
                         }
@@ -550,7 +594,7 @@ var RenderPDF = function () {
 
                             case 8:
                                 _context11.next = 10;
-                                return this.isCommandExists('google-stable');
+                                return this.isCommandExists('google-chrome-stable');
 
                             case 10:
                                 if (!_context11.sent) {
@@ -558,7 +602,7 @@ var RenderPDF = function () {
                                     break;
                                 }
 
-                                return _context11.abrupt('return', 'google-stable');
+                                return _context11.abrupt('return', 'google-chrome-stable');
 
                             case 12:
                                 _context11.next = 14;
@@ -736,14 +780,14 @@ var RenderPDF = function () {
         key: 'checkChromeVersion',
         value: function () {
             var _ref13 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee14() {
-                var _this3 = this;
+                var _this4 = this;
 
                 return _regenerator2.default.wrap(function _callee14$(_context14) {
                     while (1) {
                         switch (_context14.prev = _context14.next) {
                             case 0:
                                 return _context14.abrupt('return', new _promise2.default(function (resolve, reject) {
-                                    CDP({ host: _this3.host, port: _this3.port }, function () {
+                                    CDP({ host: _this4.host, port: _this4.port }, function () {
                                         var _ref14 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee13(client) {
                                             var Browser, version;
                                             return _regenerator2.default.wrap(function _callee13$(_context13) {
@@ -759,13 +803,13 @@ var RenderPDF = function () {
                                                             version = _context13.sent;
 
                                                             if (version.product.search('/64.') !== -1) {
-                                                                _this3.error('     ===== WARNING =====');
-                                                                _this3.error('  Detected Chrome in version 64.x');
-                                                                _this3.error('  This version is known to contain bug in remote api that prevents this tool to work');
-                                                                _this3.error('  This issue is resolved in version 65');
-                                                                _this3.error('  More info: https://github.com/Szpadel/chrome-headless-render-pdf/issues/22');
+                                                                _this4.error('     ===== WARNING =====');
+                                                                _this4.error('  Detected Chrome in version 64.x');
+                                                                _this4.error('  This version is known to contain bug in remote api that prevents this tool to work');
+                                                                _this4.error('  This issue is resolved in version 65');
+                                                                _this4.error('  More info: https://github.com/Szpadel/chrome-headless-render-pdf/issues/22');
                                                             }
-                                                            _this3.log('Connected to ' + version.product + ', protocol ' + version.protocolVersion);
+                                                            _this4.log('Connected to ' + version.product + ', protocol ' + version.protocolVersion);
                                                             _context13.next = 12;
                                                             break;
 
@@ -773,7 +817,7 @@ var RenderPDF = function () {
                                                             _context13.prev = 9;
                                                             _context13.t0 = _context13['catch'](0);
 
-                                                            _this3.error('Wasn\'t able to check chrome version, skipping compatibility check.');
+                                                            _this4.error('Wasn\'t able to check chrome version, skipping compatibility check.');
 
                                                         case 12:
                                                             resolve();
@@ -783,7 +827,7 @@ var RenderPDF = function () {
                                                             return _context13.stop();
                                                     }
                                                 }
-                                            }, _callee13, _this3, [[0, 9]]);
+                                            }, _callee13, _this4, [[0, 9]]);
                                         }));
 
                                         return function (_x8) {
