@@ -24,7 +24,6 @@ class RenderPDF {
           this.port = this.options.remotePort;
         } else {
           this.host = 'localhost';
-          this.port = Math.floor(Math.random() * 10000 + 1000);
         }
     }
 
